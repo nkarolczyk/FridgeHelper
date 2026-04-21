@@ -46,7 +46,6 @@ object AppModule {
     fun provideCachedRecipeDao(db: FridgeDatabase): CachedRecipeDao = db.cachedRecipeDao()
 
     // Open Food Facts
-
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient =

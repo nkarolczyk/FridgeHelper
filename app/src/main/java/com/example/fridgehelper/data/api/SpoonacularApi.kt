@@ -6,8 +6,8 @@ import retrofit2.http.Query
 
 interface SpoonacularApi {
 
-    // szuka przepisów na podstawie listy składników z lodówki
-    // lista składników musi byc po angielsku aby to działało!!!!
+    // szuka przepisów po liście składników
+    // składniki po angielsku!!!
     @GET("recipes/findByIngredients")
     suspend fun findByIngredients(
         @Query("ingredients") ingredients: String,
@@ -17,7 +17,7 @@ interface SpoonacularApi {
         @Query("apiKey") apiKey: String
     ): List<RecipeDto>
 
-    // szczegóły konkretnego przepisu
+    // szczegóły przepisu (kroki, czas) JESZCZE NIE UZYWANE W UI
     @GET("recipes/{id}/information")
     suspend fun getRecipeDetail(
         @Path("id") id: Int,

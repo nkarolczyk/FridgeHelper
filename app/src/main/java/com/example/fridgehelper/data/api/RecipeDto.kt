@@ -2,7 +2,7 @@ package com.example.fridgehelper.data.api
 
 import com.google.gson.annotations.SerializedName
 
-// wynik z findByIngredients — skrócona informacja o przepisie
+// skrócone dane przepisu
 data class RecipeDto(
     val id: Int,
     val title: String,
@@ -10,14 +10,15 @@ data class RecipeDto(
     @SerializedName("image")
     val imageUrl: String?,
 
+    //skladniki pasujace
     @SerializedName("usedIngredientCount")
     val usedIngredients: Int,
-
+    //skladniki brakujace
     @SerializedName("missedIngredientCount")
     val missedIngredients: Int
 )
 
-// wynik z information — szczegóły przepisu
+// pełne dane przepisu NA RAZIE NIE UZYWANE
 data class RecipeDetailDto(
     val id: Int,
     val title: String,
@@ -33,10 +34,11 @@ data class RecipeDetailDto(
     val instructions: List<InstructionDto>?
 )
 
+// lista kroków dla jednej sekcji przepisu
 data class InstructionDto(
     val steps: List<StepDto>?
 )
-
+// pojedynczy krok z numerem i opisem
 data class StepDto(
     val number: Int,
     val step: String

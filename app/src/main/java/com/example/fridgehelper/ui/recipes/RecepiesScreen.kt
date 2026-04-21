@@ -23,6 +23,7 @@ fun RecipesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    //ladowanie przepisow raz przy wejściu na ekran
     LaunchedEffect(Unit) {
         viewModel.loadRecipes()
     }
@@ -36,6 +37,7 @@ fun RecipesScreen(
                 .padding(padding),
             contentAlignment = Alignment.Center
         ) {
+            // każdy stan ui ma swój composable
             when (val state = uiState) {
                 is RecipesUiState.Idle    -> {}
                 is RecipesUiState.Loading -> CircularProgressIndicator()
@@ -64,16 +66,18 @@ private fun RecipeList(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // wyniki pochodza z chace nie z api
         if (fromCache) {
             item {
                 Text(
-                    "📦 Wyniki z cache",
+                    "wyniki z cache",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
             }
         }
+        // key zapobiega zbędnemu przerysowaniu kart przy zmianie listy
         items(recipes, key = { it.id }) { recipe ->
             RecipeCard(recipe = recipe)
         }
@@ -91,6 +95,7 @@ private fun RecipeCard(recipe: RecipeDto) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // asyncimage z coil — ładuje obrazek z url asynchronicznie
             AsyncImage(
                 model = recipe.imageUrl,
                 contentDescription = recipe.title,
@@ -104,15 +109,17 @@ private fun RecipeCard(recipe: RecipeDto) {
                     recipe.title,
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis // "..." gdy tytuł za długi
                 )
                 Spacer(Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // zielony badge — ile składników z lodówki pasuje
                     IngredientBadge(
                         count = recipe.usedIngredients,
                         label = "masz",
                         color = MaterialTheme.colorScheme.primaryContainer
                     )
+                    // czerwony badge — ile składników brakuje
                     IngredientBadge(
                         count = recipe.missedIngredients,
                         label = "brakuje",

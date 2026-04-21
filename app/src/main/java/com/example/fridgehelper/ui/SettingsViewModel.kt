@@ -19,7 +19,7 @@ class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
-    // UI obserwuje ten StateFlow — reaguje natychmiast na zmianę
+    // UI obserwuje StateFlow — reaguje natychmiast na zmianę
     val daysThreshold: StateFlow<Int> = userPreferences.daysThreshold
         .stateIn(
             scope = viewModelScope,
@@ -30,7 +30,6 @@ class SettingsViewModel @Inject constructor(
     fun setThreshold(days: Int) {
         viewModelScope.launch {
             userPreferences.setDaysThreshold(days)
-            // przeplanuj Workera z nowym progiem
             FridgeApp.scheduleExpiryCheck(context, days)
         }
     }

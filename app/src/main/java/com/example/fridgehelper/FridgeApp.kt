@@ -14,10 +14,8 @@ import javax.inject.Inject
 
 @HiltAndroidApp
 class FridgeApp : Application(), Configuration.Provider {
-
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
-
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -25,7 +23,9 @@ class FridgeApp : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        //powiadomienie przy starcie aplikacji
         createNotificationChannel()
+        //codzienne sprawdzanie dat ważności
         scheduleExpiryCheck(this, UserPreferences.DEFAULT_THRESHOLD)
     }
 
@@ -35,7 +35,7 @@ class FridgeApp : Application(), Configuration.Provider {
             "Terminy ważności",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "Przypomnienia o kończących się produktach"
+            description = "przypomnienia o kończącej się dacie produktów"
         }
         getSystemService(NotificationManager::class.java)
             .createNotificationChannel(channel)
@@ -43,10 +43,12 @@ class FridgeApp : Application(), Configuration.Provider {
 
     companion object {
         fun scheduleExpiryCheck(context: Context, daysThreshold: Int) {
+            // próg dni do workera jako dane wejściowe
             val inputData = workDataOf(
                 ExpiryCheckWorker.KEY_DAYS_THRESHOLD to daysThreshold
             )
 
+            //zadanie (powiadomienia) powtarzaja sie co 24h
             val request = PeriodicWorkRequestBuilder<ExpiryCheckWorker>(
                 repeatInterval = 24,
                 repeatIntervalTimeUnit = TimeUnit.HOURS
@@ -54,11 +56,13 @@ class FridgeApp : Application(), Configuration.Provider {
                 .setInputData(inputData)
                 .setConstraints(
                     Constraints.Builder()
+                        // nie uruchamia się gdy bateria jest niska
                         .setRequiresBatteryNotLow(true)
                         .build()
                 )
                 .build()
 
+            // REPLACE zastępuje poprzednie zaplanowane zadanie
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 "expiry_check",
                 ExistingPeriodicWorkPolicy.REPLACE,

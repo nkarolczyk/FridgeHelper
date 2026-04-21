@@ -2,18 +2,18 @@ package com.example.fridgehelper.data.api
 
 import com.google.gson.annotations.SerializedName
 
-// DTO mapujące odpowiedzi z API do obiektów używanych w aplikacji
+// klasy mapujące json z open food facts na obiekty kotlinowe
 
 data class OpenFoodResponse(
-    val status: Int,
+    val status: Int,        // 1 = znaleziony, 0 = brak
     val product: OpenFoodProduct?
 )
 
 data class OpenFoodProduct(
-    @SerializedName("product_name")
+    @SerializedName("product_name")     // angielska nazwa z api
     val productName: String?,
 
-    @SerializedName("product_name_pl")
+    @SerializedName("product_name_pl")  // polska nazwa z api
     val productNamePl: String?,
 
     @SerializedName("image_front_small_url")
@@ -21,6 +21,7 @@ data class OpenFoodProduct(
 
     val nutriments: Nutriments?
 ) {
+    //polska nazwa jeśli jest wpp angielska
     fun bestName(): String? = productNamePl?.takeIf { it.isNotBlank() }
         ?: productName?.takeIf { it.isNotBlank() }
 }

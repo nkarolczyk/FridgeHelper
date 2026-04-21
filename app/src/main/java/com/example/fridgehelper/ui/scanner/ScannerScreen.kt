@@ -33,12 +33,7 @@ import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.Executors
 
-
-
-// cały interfejs ekranu skanowania
-// obsługę kamery, wykrywanie kodów kreskowych, ręczne wpisywanie kodu
-//  wyświetlanie formularza dodania produktu po skanie
-
+// ekran skanowania — kamera, wykrywanie kodów ean, ręczne wpisanie, dialog dodania produktu
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,26 +44,30 @@ fun ScannerScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
 
-    var hasCameraPermission by remember {   //przyznanie uprawnien dla kamery wazne!!
+    // sprawdza przy starcie czy uprawnienie do kamery jest już przyznane
+    var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
                 context, Manifest.permission.CAMERA
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
         )
     }
+    // launcher wyświetla systemowy dialog o uprawnienie i odbiera wynik
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> hasCameraPermission = granted }
 
+    // prosi o uprawnienie przy pierwszym otwarciu ekranu
     LaunchedEffect(Unit) {
         if (!hasCameraPermission) permissionLauncher.launch(Manifest.permission.CAMERA)
     }
 
+    // gdy produkt zapisany — automatycznie wraca do ekranu lodówki
     LaunchedEffect(uiState) {
         if (uiState == ScannerUiState.Saved) navController.popBackStack()
     }
 
-    // pole do recznego wpisywania kodu
+    // lokalny stan dla pola ręcznego wpisywania kodu
     var manualBarcode by remember { mutableStateOf("") }
 
     Scaffold(
@@ -88,7 +87,7 @@ fun ScannerScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // tu
+            // pole do ręcznego wpisania kodu — alternatywa dla skanowania kamerą
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -98,6 +97,7 @@ fun ScannerScreen(
             ) {
                 OutlinedTextField(
                     value = manualBarcode,
+                    // filter — akceptuje tylko cyfry
                     onValueChange = { manualBarcode = it.filter(Char::isDigit) },
                     label = { Text("Wpisz kod kreskowy") },
                     singleLine = true,
@@ -106,6 +106,7 @@ fun ScannerScreen(
                         keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Search
                     ),
+                    // wyszukuje po kliknięciu "szukaj" na klawiaturze
                     keyboardActions = KeyboardActions(
                         onSearch = {
                             viewModel.onManualBarcodeEntered(manualBarcode)
@@ -113,7 +114,8 @@ fun ScannerScreen(
                         }
                     )
                 )
-                IconButton( //weryfukacja tego wpisanego kodu
+                // przycisk szukaj — aktywny tylko gdy pole niepuste i kamera nie ładuje
+                IconButton(
                     onClick = {
                         viewModel.onManualBarcodeEntered(manualBarcode)
                         manualBarcode = ""
@@ -126,7 +128,7 @@ fun ScannerScreen(
 
             Divider()
 
-            // PODGLAD KAMERY
+            // podgląd kamery zajmuje resztę ekranu
             Box(modifier = Modifier.weight(1f)) {
                 if (!hasCameraPermission) {
                     NoCameraPermissionView(
@@ -137,8 +139,10 @@ fun ScannerScreen(
                         modifier = Modifier.fillMaxSize(),
                         onBarcodeDetected = viewModel::onBarcodeDetected
                     )
+                    // biała ramka celownika na środku ekranu
                     ScannerOverlay()
 
+                    // półprzezroczyste przyciemnienie podczas ładowania z api
                     if (uiState == ScannerUiState.Loading) {
                         Box(
                             Modifier
@@ -154,7 +158,7 @@ fun ScannerScreen(
         }
     }
 
-    // dialog dodania produktu po kodzie
+    // dialog pojawia się gdy kod został zeskanowany i dane są gotowe
     val scannedState = uiState
     if (scannedState is ScannerUiState.Scanned) {
         ScannedProductDialog(
@@ -165,7 +169,7 @@ fun ScannerScreen(
     }
 }
 
-// CameraX
+// composable opakowujący camerax — integruje androidview z compose
 @Composable
 private fun CameraPreview(
     modifier: Modifier = Modifier,
@@ -173,9 +177,11 @@ private fun CameraPreview(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    // osobny wątek do analizy klatek — nie blokuje ui
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     val barcodeScanner = remember { BarcodeScanning.getClient() }
 
+    // zwalnia zasoby gdy composable znika z ekranu
     DisposableEffect(Unit) {
         onDispose {
             cameraExecutor.shutdown()
@@ -183,6 +189,7 @@ private fun CameraPreview(
         }
     }
 
+    // androidview — osadza tradycyjny android view (previewview) w compose
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
@@ -190,10 +197,13 @@ private fun CameraPreview(
                 val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
                 cameraProviderFuture.addListener({
                     val cameraProvider = cameraProviderFuture.get()
+                    // use case podglądu — wyświetla obraz z kamery na ekranie
                     val preview = Preview.Builder().build().also {
                         it.setSurfaceProvider(previewView.surfaceProvider)
                     }
+                    // use case analizy — przetwarza każdą klatkę w poszukiwaniu kodu
                     val imageAnalysis = ImageAnalysis.Builder()
+                        // keep_only_latest — odrzuca stare klatki gdy analiza jest wolniejsza niż kamera
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build()
                         .also { analysis ->
@@ -203,6 +213,7 @@ private fun CameraPreview(
                         }
                     try {
                         cameraProvider.unbindAll()
+                        // wiąże kamerę z cyklem życia — zatrzymuje się gdy ekran jest niewidoczny
                         cameraProvider.bindToLifecycle(
                             lifecycleOwner,
                             CameraSelector.DEFAULT_BACK_CAMERA,
@@ -218,25 +229,28 @@ private fun CameraPreview(
     )
 }
 
+// przetwarza pojedynczą klatkę z kamery i szuka kodu ean-13
 @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
 private fun processImageProxy(
     barcodeScanner: com.google.mlkit.vision.barcode.BarcodeScanner,
     imageProxy: ImageProxy,
     onBarcodeDetected: (String) -> Unit
 ) {
+    // imageProxy.close() musi być wywołane zawsze — inaczej kamera się zatrzyma
     val mediaImage = imageProxy.image ?: run { imageProxy.close(); return }
     val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
-    // przekaz klatki obrazu do ML Kit w celu odczytu kodu kreskowego
     barcodeScanner.process(image)
+        // bierze tylko pierwszy wykryty kod ean-13
         .addOnSuccessListener { barcodes ->
             barcodes.firstOrNull { it.format == Barcode.FORMAT_EAN_13 }
                 ?.rawValue?.let { onBarcodeDetected(it) }
         }
         .addOnFailureListener { Log.w("ScannerScreen", "ML Kit error", it) }
+        // zamknięcie proxy musi być w oncomplete — zawsze po sukcesie i błędzie
         .addOnCompleteListener { imageProxy.close() }
 }
 
-// Overlay celownika
+// biała ramka celownika rysowana nad podglądem kamery
 @Composable
 private fun ScannerOverlay() {
     Box(Modifier.fillMaxSize()) {
@@ -246,6 +260,7 @@ private fun ScannerOverlay() {
             verticalArrangement = Arrangement.Center
         ) {
             Box(Modifier.fillMaxWidth(0.75f).height(120.dp)) {
+                // cztery narożniki tworzą razem ramkę celownika
                 CornerDecoration(Modifier.align(Alignment.TopStart), topLeft = true)
                 CornerDecoration(Modifier.align(Alignment.TopEnd), topRight = true)
                 CornerDecoration(Modifier.align(Alignment.BottomStart), bottomLeft = true)
@@ -257,6 +272,7 @@ private fun ScannerOverlay() {
     }
 }
 
+// rysuje jeden narożnik ramki — białe kreski pozioma + pionowa
 @Composable
 private fun CornerDecoration(
     modifier: Modifier = Modifier,
@@ -273,13 +289,14 @@ private fun CornerDecoration(
     }
 }
 
-// dialog po skanowaniu
+// dialog po skanowaniu — pokazuje wartości odżywcze i pozwala ustawić datę ważności
 @Composable
 private fun ScannedProductDialog(
     state: ScannerUiState.Scanned,
     onConfirm: (name: String, expiryDate: Long) -> Unit,
     onDismiss: () -> Unit
 ) {
+    // wypełnia pole nazwą z api lub zostawia puste do ręcznego wpisania
     var name by remember { mutableStateOf(state.productName ?: "") }
     var days by remember { mutableStateOf("7") }
 
@@ -288,6 +305,7 @@ private fun ScannedProductDialog(
         title = { Text("Dodaj produkt") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // informacja gdy produkt nieznany w bazie open food facts
                 if (state.productName == null) {
                     Text(
                         "Produkt nieznaleziony w bazie. Wpisz nazwę ręcznie.",
@@ -297,7 +315,7 @@ private fun ScannedProductDialog(
                 }
                 Text("Kod: ${state.barcode}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
 
-                // wartości odżywcze (jeśli dostępne)
+                // karta wartości odżywczych — widoczna tylko gdy api zwróciło dane
                 if (state.calories != null || state.protein != null || state.fat != null || state.carbs != null) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
@@ -317,6 +335,7 @@ private fun ScannedProductDialog(
                     }
                 }
 
+                // iserror = true podświetla pole na czerwono gdy nazwa pusta
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -337,6 +356,7 @@ private fun ScannedProductDialog(
                 onClick = {
                     if (name.isNotBlank()) {
                         val daysInt = days.toIntOrNull() ?: 7
+                        // przelicza dni na timestamp i przekazuje do viewmodelu
                         onConfirm(name, System.currentTimeMillis() + daysInt * 24L * 60 * 60 * 1000)
                     }
                 },
@@ -352,8 +372,7 @@ private fun NutrientChip(text: String) {
     Text(text, style = MaterialTheme.typography.bodySmall)
 }
 
-// Brak uprawnień
-
+// wyświetla komunikat i przycisk gdy brak uprawnień do kamery
 @Composable
 private fun NoCameraPermissionView(onRequestAgain: () -> Unit) {
     Column(

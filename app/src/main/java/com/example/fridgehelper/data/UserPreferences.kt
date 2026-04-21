@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
+// rozszerzenie tworzące jeden datastore dla całej aplikacji
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
     name = "user_preferences"
 )
@@ -21,11 +22,14 @@ class UserPreferences @Inject constructor(
 ) {
     companion object {
         val KEY_DAYS_THRESHOLD = intPreferencesKey("days_threshold")
+        // domyślnie powiadamia 3 dni przed końcem
         const val DEFAULT_THRESHOLD = 3
     }
 
+    //ui reaguje automatycznie gdy wartość się zmieni
     val daysThreshold: Flow<Int> = context.dataStore.data
         .map { preferences ->
+            // jeśli brak wpisu zwraca domyślną wartość
             preferences[KEY_DAYS_THRESHOLD] ?: DEFAULT_THRESHOLD
         }
 
