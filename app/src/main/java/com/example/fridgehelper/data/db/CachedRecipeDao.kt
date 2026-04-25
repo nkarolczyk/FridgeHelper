@@ -16,4 +16,7 @@ interface CachedRecipeDao {
 
     @Query("SELECT cachedAt FROM cached_recipes ORDER BY cachedAt DESC LIMIT 1")
     suspend fun getLastCachedAt(): Long?
+
+    @Query("SELECT ingredientsKey FROM cached_recipes LIMIT 1")
+    suspend fun getIngredientsKey(): String?
 }

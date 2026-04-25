@@ -11,6 +11,7 @@ import com.example.fridgehelper.data.repository.FridgeRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
+// logika powiadomień
 @HiltWorker
 class ExpiryCheckWorker @AssistedInject constructor(
     @Assisted context: Context,

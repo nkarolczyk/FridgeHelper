@@ -41,4 +41,10 @@ class FridgeViewModel @Inject constructor(
             repository.removeProduct(product)
         }
     }
+
+    fun updateProduct(product: Product) {
+        viewModelScope.launch {
+            repository.updateProduct(product)
+        }
+    }
 }

@@ -1,5 +1,6 @@
 package com.example.fridgehelper.ui.recipes
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,20 +14,18 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.fridgehelper.data.api.RecipeDto
+import com.example.fridgehelper.ui.Screen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecipesScreen(
+    navController: NavController,
     viewModel: RecipesViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    //ladowanie przepisow raz przy wejściu na ekran
-    LaunchedEffect(Unit) {
-        viewModel.loadRecipes()
-    }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Przepisy") }) }
@@ -48,6 +47,9 @@ fun RecipesScreen(
                 is RecipesUiState.Success -> RecipeList(
                     recipes = state.recipes,
                     fromCache = state.fromCache,
+                    onRecipeClick = { recipeId ->
+                        navController.navigate(Screen.RecipeDetail.createRoute(recipeId))
+                    },
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -59,6 +61,7 @@ fun RecipesScreen(
 private fun RecipeList(
     recipes: List<RecipeDto>,
     fromCache: Boolean,
+    onRecipeClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -66,28 +69,28 @@ private fun RecipeList(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // wyniki pochodza z chace nie z api
         if (fromCache) {
             item {
                 Text(
-                    "wyniki z cache",
+                    "Wyniki z pamięci podręcznej",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
             }
         }
-        // key zapobiega zbędnemu przerysowaniu kart przy zmianie listy
         items(recipes, key = { it.id }) { recipe ->
-            RecipeCard(recipe = recipe)
+            RecipeCard(recipe = recipe, onClick = { onRecipeClick(recipe.id) })
         }
     }
 }
 
 @Composable
-private fun RecipeCard(recipe: RecipeDto) {
+private fun RecipeCard(recipe: RecipeDto, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(

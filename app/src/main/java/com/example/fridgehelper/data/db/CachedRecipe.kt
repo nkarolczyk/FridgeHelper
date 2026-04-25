@@ -11,5 +11,6 @@ data class CachedRecipe(
     val imageUrl: String?,
     val usedIngredients: Int,
     val missedIngredients: Int,
-    val cachedAt: Long = System.currentTimeMillis()  // kiedy zapisano
+    val cachedAt: Long = System.currentTimeMillis(),
+    val ingredientsKey: String = ""
 )

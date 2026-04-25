@@ -12,8 +12,13 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import javax.inject.Inject
 
 // stany ekranu przepisów
@@ -36,8 +41,17 @@ class RecipesViewModel @Inject constructor(
     val uiState: StateFlow<RecipesUiState> = _uiState.asStateFlow()
 
     companion object {
-        // cache ważny przez 1h — po tym czasie pobiera świeże dane z api
         private const val CACHE_TTL_MS = 60 * 60 * 1000L
+    }
+
+    init {
+        // obs zmiany w liscie produktow i zmienia przepisy gdy składniki sie zmieniaja
+        viewModelScope.launch {
+            repository.allProducts
+                .map { products -> products.joinToString(",") { it.name } }
+                .distinctUntilChanged()
+                .collect { loadRecipes() }
+        }
     }
 
     fun loadRecipes() {
@@ -50,13 +64,16 @@ class RecipesViewModel @Inject constructor(
                 return@launch
             }
 
-            // sprawdza czy cache jest świeższy niż 1h
+            val ingredients = products.joinToString(",") { it.name }
+
+            // cache jest świeży tylko jeśli i czas < 1h i składniki się nie zmieniły
             val lastCachedAt = cachedRecipeDao.getLastCachedAt()
+            val cachedKey = cachedRecipeDao.getIngredientsKey()
             val cacheIsFresh = lastCachedAt != null &&
-                    (System.currentTimeMillis() - lastCachedAt) < CACHE_TTL_MS
+                    (System.currentTimeMillis() - lastCachedAt) < CACHE_TTL_MS &&
+                    cachedKey == ingredients
 
             if (cacheIsFresh) {
-                // zwraca zapisane wyniki bez odpytywania api
                 val cached = cachedRecipeDao.getAll()
                 _uiState.value = RecipesUiState.Success(
                     recipes = cached.toRecipeDtoList(),
@@ -64,9 +81,6 @@ class RecipesViewModel @Inject constructor(
                 )
                 return@launch
             }
-
-            // składniki jako jeden string
-            val ingredients = products.joinToString(",") { it.name }
 
             try {
                 val recipes = spoonacularApi.findByIngredients(
@@ -82,12 +96,11 @@ class RecipesViewModel @Inject constructor(
 
                 // czyści stary cache i zapisuje nowe wyniki
                 cachedRecipeDao.clearAll()
-                cachedRecipeDao.insertAll(recipes.toCachedRecipeList())
+                cachedRecipeDao.insertAll(recipes.toCachedRecipeList(ingredients))
 
                 _uiState.value = RecipesUiState.Success(recipes = recipes, fromCache = false)
 
             } catch (e: Exception) {
-                // gdy api niedostępne pokazuje stary cache zamiast błędu
                 val staleCache = cachedRecipeDao.getAll()
                 if (staleCache.isNotEmpty()) {
                     _uiState.value = RecipesUiState.Success(
@@ -95,7 +108,12 @@ class RecipesViewModel @Inject constructor(
                         fromCache = true
                     )
                 } else {
-                    _uiState.value = RecipesUiState.Error("blad połączenia: ${e.localizedMessage}")
+                    val msg = when (e) {
+                        is UnknownHostException, is SocketTimeoutException, is IOException ->
+                            "Brak połączenia z internetem. Sprawdź sieć i spróbuj ponownie."
+                        else -> "Nie udało się pobrać przepisów. Spróbuj ponownie."
+                    }
+                    _uiState.value = RecipesUiState.Error(msg)
                 }
             }
         }
@@ -111,13 +129,13 @@ class RecipesViewModel @Inject constructor(
             missedIngredients = it.missedIngredients
         )}
 
-    // konwersja dto encji room do zapisu w cache
-    private fun List<RecipeDto>.toCachedRecipeList(): List<CachedRecipe> =
+    private fun List<RecipeDto>.toCachedRecipeList(ingredientsKey: String): List<CachedRecipe> =
         map { CachedRecipe(
             id = it.id,
             title = it.title,
             imageUrl = it.imageUrl,
             usedIngredients = it.usedIngredients,
-            missedIngredients = it.missedIngredients
+            missedIngredients = it.missedIngredients,
+            ingredientsKey = ingredientsKey
         )}
 }

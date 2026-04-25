@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [Product::class, CachedRecipe::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class FridgeDatabase : RoomDatabase() {
@@ -21,6 +21,12 @@ abstract class FridgeDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE products ADD COLUMN protein REAL")
                 db.execSQL("ALTER TABLE products ADD COLUMN fat REAL")
                 db.execSQL("ALTER TABLE products ADD COLUMN carbs REAL")
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE cached_recipes ADD COLUMN ingredientsKey TEXT NOT NULL DEFAULT ''")
             }
         }
 

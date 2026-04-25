@@ -35,7 +35,8 @@ object AppModule {
         )
             .addMigrations(
                 FridgeDatabase.MIGRATION_1_2,
-                FridgeDatabase.MIGRATION_2_3
+                FridgeDatabase.MIGRATION_2_3,
+                FridgeDatabase.MIGRATION_3_4
             )
             .build()
 

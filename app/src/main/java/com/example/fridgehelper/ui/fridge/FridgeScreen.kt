@@ -5,8 +5,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,8 +22,6 @@ import com.example.fridgehelper.ui.Screen
 import java.text.SimpleDateFormat
 import java.util.*
 
-
-//GŁÓWNY EKRAN LODÓWKI - lista, mozna usuwac/filtrowac
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FridgeScreen(
@@ -29,7 +29,8 @@ fun FridgeScreen(
     viewModel: FridgeViewModel = hiltViewModel()
 ) {
     val products by viewModel.products.collectAsState()
-    var showDialog by remember { mutableStateOf(false) }
+    var showAddDialog by remember { mutableStateOf(false) }
+    var productToEdit by remember { mutableStateOf<Product?>(null) }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("LODÓWKA") }) },
@@ -41,7 +42,7 @@ fun FridgeScreen(
                     Icon(Icons.Default.CameraAlt, "Skanuj")
                 }
                 Spacer(Modifier.height(8.dp))
-                FloatingActionButton(onClick = { showDialog = true }) {
+                FloatingActionButton(onClick = { showAddDialog = true }) {
                     Icon(Icons.Default.Add, "Dodaj produkt")
                 }
             }
@@ -49,7 +50,9 @@ fun FridgeScreen(
     ) { padding ->
         if (products.isEmpty()) {
             Box(
-                Modifier.fillMaxSize().padding(padding),
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -60,30 +63,47 @@ fun FridgeScreen(
             }
         } else {
             LazyColumn(
-                modifier = Modifier.padding(padding).fillMaxSize(),
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(products, key = { it.id }) { product ->
-                    ProductCard(product = product, onDelete = { viewModel.removeProduct(product) })
+                    ProductCard(
+                        product = product,
+                        onDelete = { viewModel.removeProduct(product) },
+                        onEdit = { productToEdit = product }
+                    )
                 }
             }
         }
     }
 
-    if (showDialog) {
+    if (showAddDialog) {
         AddProductDialog(
             onConfirm = { name, date ->
                 viewModel.addProduct(name, date)
-                showDialog = false
+                showAddDialog = false
             },
-            onDismiss = { showDialog = false }
+            onDismiss = { showAddDialog = false }
+        )
+    }
+
+    productToEdit?.let { product ->
+        EditProductDialog(
+            product = product,
+            onConfirm = { updatedProduct ->
+                viewModel.updateProduct(updatedProduct)
+                productToEdit = null
+            },
+            onDismiss = { productToEdit = null }
         )
     }
 }
 
 @Composable
-fun ProductCard(product: Product, onDelete: () -> Unit) {
+fun ProductCard(product: Product, onDelete: () -> Unit, onEdit: () -> Unit) {
     val daysLeft = ((product.expiryDate - System.currentTimeMillis()) / (1000 * 60 * 60 * 24)).toInt()
     val cardColor = when {
         daysLeft < 0  -> MaterialTheme.colorScheme.errorContainer
@@ -107,13 +127,16 @@ fun ProductCard(product: Product, onDelete: () -> Unit) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(product.name, style = MaterialTheme.typography.titleMedium)
-                Text(statusText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    statusText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Text(
                     "Ważny do: ${SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date(product.expiryDate))}",
                     style = MaterialTheme.typography.bodySmall
                 )
 
-                // wartosci odżywcze / 100g
                 if (hasNutrition) {
                     Spacer(Modifier.height(6.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -137,8 +160,11 @@ fun ProductCard(product: Product, onDelete: () -> Unit) {
                     )
                 }
             }
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Default.Edit, contentDescription = "Edytuj")
+            }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, "Usuń")
+                Icon(Icons.Default.Delete, contentDescription = "Usuń")
             }
         }
     }
@@ -161,10 +187,30 @@ private fun NutritionBadge(label: String, value: String, color: Color) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddProductDialog(onConfirm: (String, Long) -> Unit, onDismiss: () -> Unit) {
     var name by remember { mutableStateOf("") }
-    var days by remember { mutableStateOf("7") }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = System.currentTimeMillis() + 7 * 24L * 60 * 60 * 1000
+    )
+    val fmt = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+    val selectedDateLabel = datePickerState.selectedDateMillis?.let { fmt.format(Date(it)) } ?: "Wybierz datę"
+
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Anuluj") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -175,23 +221,90 @@ fun AddProductDialog(onConfirm: (String, Long) -> Unit, onDismiss: () -> Unit) {
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Nazwa produktu") },
-                    singleLine = true
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = days,
-                    onValueChange = { days = it.filter(Char::isDigit) },
-                    label = { Text("Ważny przez ile dni?") },
-                    singleLine = true
-                )
+                OutlinedButton(
+                    onClick = { showDatePicker = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.CalendarToday, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Data ważności: $selectedDateLabel")
+                }
             }
         },
         confirmButton = {
             TextButton(onClick = {
                 if (name.isNotBlank()) {
-                    val daysInt = days.toIntOrNull() ?: 7
-                    onConfirm(name, System.currentTimeMillis() + daysInt * 24L * 60 * 60 * 1000)
+                    val date = datePickerState.selectedDateMillis
+                        ?: (System.currentTimeMillis() + 7 * 24L * 60 * 60 * 1000)
+                    onConfirm(name, date)
                 }
             }) { Text("Dodaj") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Anuluj") } }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditProductDialog(
+    product: Product,
+    onConfirm: (Product) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf(product.name) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = product.expiryDate
+    )
+    val fmt = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+    val selectedDateLabel = datePickerState.selectedDateMillis?.let { fmt.format(Date(it)) } ?: "Wybierz datę"
+
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Anuluj") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edytuj produkt") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nazwa produktu") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedButton(
+                    onClick = { showDatePicker = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.CalendarToday, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Data ważności: $selectedDateLabel")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                if (name.isNotBlank()) {
+                    val date = datePickerState.selectedDateMillis ?: product.expiryDate
+                    onConfirm(product.copy(name = name, expiryDate = date))
+                }
+            }) { Text("Zapisz") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Anuluj") } }
     )
