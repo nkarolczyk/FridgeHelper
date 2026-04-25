@@ -32,10 +32,10 @@ class FridgeApp : Application(), Configuration.Provider {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             "expiry_channel",
-            "Terminy ważności",
+            "Expiry dates",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "przypomnienia o kończącej się dacie produktów"
+            description = "Reminders for products nearing expiry"
         }
         getSystemService(NotificationManager::class.java)
             .createNotificationChannel(channel)

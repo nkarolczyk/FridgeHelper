@@ -23,12 +23,13 @@ import com.example.fridgehelper.ui.recipes.RecipesScreen
 import com.example.fridgehelper.ui.scanner.ScannerScreen
 import com.example.fridgehelper.ui.settings.SettingsScreen
 
+// NAWIGACJA APLIKACJI PRZEŁĄCZANIE PO EKRANIE
 sealed class Screen(val route: String, val label: String) {
-    object Fridge   : Screen("fridge", "Lodówka")
-    object Recipes  : Screen("recipes", "Przepisy")
-    object Settings : Screen("settings", "Ustawienia")
-    object Scanner  : Screen("scanner", "Skaner")
-    object RecipeDetail : Screen("recipe_detail/{recipeId}", "Przepis") {
+    object Fridge   : Screen("fridge", "Fridge")
+    object Recipes  : Screen("recipes", "Recipes")
+    object Settings : Screen("settings", "Settings")
+    object Scanner  : Screen("scanner", "Scanner")
+    object RecipeDetail : Screen("recipe_detail/{recipeId}", "Recipe") {
         fun createRoute(recipeId: Int) = "recipe_detail/$recipeId"
     }
 }

@@ -46,8 +46,8 @@ class RecipeDetailViewModel @Inject constructor(
             } catch (e: Exception) {
                 val msg = when (e) {
                     is UnknownHostException, is SocketTimeoutException, is IOException ->
-                        "BRAK POŁĄCZENIA Z INTERNETEM :("
-                    else -> "Nie udało się załadować przepisu :("
+                        "No internet connection :("
+                    else -> "Failed to load recipe :("
                 }
                 _uiState.value = RecipeDetailUiState.Error(msg)
             }

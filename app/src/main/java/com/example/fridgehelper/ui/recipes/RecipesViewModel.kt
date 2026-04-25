@@ -90,7 +90,7 @@ class RecipesViewModel @Inject constructor(
                 )
 
                 if (recipes.isEmpty()) {
-                    _uiState.value = RecipesUiState.Error("Nie znaleziono przepisów dla Twoich składników.")
+                    _uiState.value = RecipesUiState.Error("No recipes found for your ingredients.")
                     return@launch
                 }
 
@@ -110,8 +110,8 @@ class RecipesViewModel @Inject constructor(
                 } else {
                     val msg = when (e) {
                         is UnknownHostException, is SocketTimeoutException, is IOException ->
-                            "Brak połączenia z internetem. Sprawdź sieć i spróbuj ponownie."
-                        else -> "Nie udało się pobrać przepisów. Spróbuj ponownie."
+                            "No internet connection. Check your network and try again."
+                        else -> "Failed to load recipes. Please try again."
                     }
                     _uiState.value = RecipesUiState.Error(msg)
                 }

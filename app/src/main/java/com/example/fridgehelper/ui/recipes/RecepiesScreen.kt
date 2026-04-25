@@ -28,7 +28,7 @@ fun RecipesScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Przepisy") }) }
+        topBar = { TopAppBar(title = { Text("Recipes") }) }
     ) { padding ->
         Box(
             modifier = Modifier
@@ -36,7 +36,6 @@ fun RecipesScreen(
                 .padding(padding),
             contentAlignment = Alignment.Center
         ) {
-            // każdy stan ui ma swój composable
             when (val state = uiState) {
                 is RecipesUiState.Idle    -> {}
                 is RecipesUiState.Loading -> CircularProgressIndicator()
@@ -72,7 +71,7 @@ private fun RecipeList(
         if (fromCache) {
             item {
                 Text(
-                    "Wyniki z pamięci podręcznej",
+                    "Cached results",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline,
                     modifier = Modifier.padding(bottom = 4.dp)
@@ -98,7 +97,6 @@ private fun RecipeCard(recipe: RecipeDto, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // asyncimage z coil — ładuje obrazek z url asynchronicznie
             AsyncImage(
                 model = recipe.imageUrl,
                 contentDescription = recipe.title,
@@ -112,20 +110,18 @@ private fun RecipeCard(recipe: RecipeDto, onClick: () -> Unit) {
                     recipe.title,
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis // "..." gdy tytuł za długi
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // zielony badge — ile składników z lodówki pasuje
                     IngredientBadge(
                         count = recipe.usedIngredients,
-                        label = "masz",
+                        label = "have",
                         color = MaterialTheme.colorScheme.primaryContainer
                     )
-                    // czerwony badge — ile składników brakuje
                     IngredientBadge(
                         count = recipe.missedIngredients,
-                        label = "brakuje",
+                        label = "missing",
                         color = MaterialTheme.colorScheme.errorContainer
                     )
                 }
@@ -154,9 +150,9 @@ private fun EmptyFridgeView() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text("Lodówka jest pusta", style = MaterialTheme.typography.titleMedium)
+        Text("Fridge is empty", style = MaterialTheme.typography.titleMedium)
         Text(
-            "Dodaj produkty, żeby zobaczyć przepisy.",
+            "Add products to see recipes.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -170,6 +166,6 @@ private fun ErrorView(message: String, onRetry: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(message, style = MaterialTheme.typography.bodyMedium)
-        Button(onClick = onRetry) { Text("Spróbuj ponownie") }
+        Button(onClick = onRetry) { Text("Try again") }
     }
 }

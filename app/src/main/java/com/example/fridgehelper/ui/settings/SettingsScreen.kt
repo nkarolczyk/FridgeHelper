@@ -12,11 +12,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    // collectasstate zamienia flow na stan compose — ui reaguje na każdą zmianę
     val threshold by viewModel.daysThreshold.collectAsState()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Ustawienia") }) }
+        topBar = { TopAppBar(title = { Text("Settings") }) }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -25,7 +24,6 @@ fun SettingsScreen(
                 .padding(horizontal = 24.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // karta z wyborem progu — przekazuje aktualną wartość i callback do zmiany
             NotificationThresholdCard(
                 currentThreshold = threshold,
                 onThresholdSelected = viewModel::setThreshold
@@ -50,11 +48,11 @@ private fun NotificationThresholdCard(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "Powiadom mnie",
+                "Notify me",
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                "Otrzymasz powiadomienie gdy produktowi zostanie mniej niż $currentThreshold ${daysLabel(currentThreshold)}.",
+                "You'll receive a notification when a product has less than $currentThreshold ${daysLabel(currentThreshold)} left.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -62,7 +60,6 @@ private fun NotificationThresholdCard(
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                //chipy 1, 2, 3 dni; zaznaczony ten który pasuje do aktualnego progu
                 listOf(1, 2, 3).forEach { days ->
                     FilterChip(
                         selected = currentThreshold == days,
@@ -76,8 +73,7 @@ private fun NotificationThresholdCard(
     }
 }
 
-//dzien/dni zalezne od liczby
 private fun daysLabel(days: Int) = when (days) {
-    1    -> "dzień"
-    else -> "dni"
+    1    -> "day"
+    else -> "days"
 }

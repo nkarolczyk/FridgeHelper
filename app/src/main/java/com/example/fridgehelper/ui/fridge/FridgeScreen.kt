@@ -33,17 +33,17 @@ fun FridgeScreen(
     var productToEdit by remember { mutableStateOf<Product?>(null) }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("LODÓWKA") }) },
+        topBar = { TopAppBar(title = { Text("FRIDGE") }) },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
                 SmallFloatingActionButton(
                     onClick = { navController.navigate(Screen.Scanner.route) }
                 ) {
-                    Icon(Icons.Default.CameraAlt, "Skanuj")
+                    Icon(Icons.Default.CameraAlt, "Scan")
                 }
                 Spacer(Modifier.height(8.dp))
                 FloatingActionButton(onClick = { showAddDialog = true }) {
-                    Icon(Icons.Default.Add, "Dodaj produkt")
+                    Icon(Icons.Default.Add, "Add product")
                 }
             }
         }
@@ -56,7 +56,7 @@ fun FridgeScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "Lodówka jest pusta.\nDodaj produkty przyciskiem +",
+                    "Fridge is empty.\nAdd products with the + button",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -111,10 +111,10 @@ fun ProductCard(product: Product, onDelete: () -> Unit, onEdit: () -> Unit) {
         else          -> MaterialTheme.colorScheme.surfaceVariant
     }
     val statusText = when {
-        daysLeft < 0  -> "Przeterminowany!"
-        daysLeft == 0 -> "Kończy się dziś"
-        daysLeft == 1 -> "Zostaje 1 dzień"
-        else          -> "Zostaje $daysLeft dni"
+        daysLeft < 0  -> "Expired!"
+        daysLeft == 0 -> "Expires today"
+        daysLeft == 1 -> "1 day left"
+        else          -> "$daysLeft days left"
     }
 
     val hasNutrition = product.calories != null || product.protein != null ||
@@ -133,7 +133,7 @@ fun ProductCard(product: Product, onDelete: () -> Unit, onEdit: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    "Ważny do: ${SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date(product.expiryDate))}",
+                    "Expires: ${SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date(product.expiryDate))}",
                     style = MaterialTheme.typography.bodySmall
                 )
 
@@ -144,27 +144,27 @@ fun ProductCard(product: Product, onDelete: () -> Unit, onEdit: () -> Unit) {
                             NutritionBadge(label = "kcal", value = it.toInt().toString(), color = Color(0xFFE57373))
                         }
                         product.protein?.let {
-                            NutritionBadge(label = "B", value = "%.1fg".format(it), color = Color(0xFF64B5F6))
+                            NutritionBadge(label = "P", value = "%.1fg".format(it), color = Color(0xFF64B5F6))
                         }
                         product.fat?.let {
-                            NutritionBadge(label = "T", value = "%.1fg".format(it), color = Color(0xFFFFB74D))
+                            NutritionBadge(label = "F", value = "%.1fg".format(it), color = Color(0xFFFFB74D))
                         }
                         product.carbs?.let {
-                            NutritionBadge(label = "W", value = "%.1fg".format(it), color = Color(0xFF81C784))
+                            NutritionBadge(label = "C", value = "%.1fg".format(it), color = Color(0xFF81C784))
                         }
                     }
                     Text(
-                        "na 100g",
+                        "per 100g",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline
                     )
                 }
             }
             IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = "Edytuj")
+                Icon(Icons.Default.Edit, contentDescription = "Edit")
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Usuń")
+                Icon(Icons.Default.Delete, contentDescription = "Delete")
             }
         }
     }
@@ -196,7 +196,7 @@ fun AddProductDialog(onConfirm: (String, Long) -> Unit, onDismiss: () -> Unit) {
         initialSelectedDateMillis = System.currentTimeMillis() + 7 * 24L * 60 * 60 * 1000
     )
     val fmt = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
-    val selectedDateLabel = datePickerState.selectedDateMillis?.let { fmt.format(Date(it)) } ?: "Wybierz datę"
+    val selectedDateLabel = datePickerState.selectedDateMillis?.let { fmt.format(Date(it)) } ?: "Pick date"
 
     if (showDatePicker) {
         DatePickerDialog(
@@ -205,7 +205,7 @@ fun AddProductDialog(onConfirm: (String, Long) -> Unit, onDismiss: () -> Unit) {
                 TextButton(onClick = { showDatePicker = false }) { Text("OK") }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Anuluj") }
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
             }
         ) {
             DatePicker(state = datePickerState)
@@ -214,13 +214,13 @@ fun AddProductDialog(onConfirm: (String, Long) -> Unit, onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Dodaj produkt") },
+        title = { Text("Add product") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nazwa produktu") },
+                    label = { Text("Product name") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -230,7 +230,7 @@ fun AddProductDialog(onConfirm: (String, Long) -> Unit, onDismiss: () -> Unit) {
                 ) {
                     Icon(Icons.Default.CalendarToday, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Data ważności: $selectedDateLabel")
+                    Text("Expiry date: $selectedDateLabel")
                 }
             }
         },
@@ -241,9 +241,9 @@ fun AddProductDialog(onConfirm: (String, Long) -> Unit, onDismiss: () -> Unit) {
                         ?: (System.currentTimeMillis() + 7 * 24L * 60 * 60 * 1000)
                     onConfirm(name, date)
                 }
-            }) { Text("Dodaj") }
+            }) { Text("Add") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Anuluj") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
 
@@ -260,7 +260,7 @@ fun EditProductDialog(
         initialSelectedDateMillis = product.expiryDate
     )
     val fmt = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
-    val selectedDateLabel = datePickerState.selectedDateMillis?.let { fmt.format(Date(it)) } ?: "Wybierz datę"
+    val selectedDateLabel = datePickerState.selectedDateMillis?.let { fmt.format(Date(it)) } ?: "Pick date"
 
     if (showDatePicker) {
         DatePickerDialog(
@@ -269,7 +269,7 @@ fun EditProductDialog(
                 TextButton(onClick = { showDatePicker = false }) { Text("OK") }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Anuluj") }
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
             }
         ) {
             DatePicker(state = datePickerState)
@@ -278,13 +278,13 @@ fun EditProductDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edytuj produkt") },
+        title = { Text("Edit product") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nazwa produktu") },
+                    label = { Text("Product name") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -294,7 +294,7 @@ fun EditProductDialog(
                 ) {
                     Icon(Icons.Default.CalendarToday, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Data ważności: $selectedDateLabel")
+                    Text("Expiry date: $selectedDateLabel")
                 }
             }
         },
@@ -304,8 +304,8 @@ fun EditProductDialog(
                     val date = datePickerState.selectedDateMillis ?: product.expiryDate
                     onConfirm(product.copy(name = name, expiryDate = date))
                 }
-            }) { Text("Zapisz") }
+            }) { Text("Save") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Anuluj") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }

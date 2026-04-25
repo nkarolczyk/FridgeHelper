@@ -21,9 +21,8 @@ data class OpenFoodProduct(
 
     val nutriments: Nutriments?
 ) {
-    //polska nazwa jeśli jest wpp angielska
-    fun bestName(): String? = productNamePl?.takeIf { it.isNotBlank() }
-        ?: productName?.takeIf { it.isNotBlank() }
+    fun bestName(): String? = productName?.takeIf { it.isNotBlank() }
+        ?: productNamePl?.takeIf { it.isNotBlank() }
 }
 
 data class Nutriments(

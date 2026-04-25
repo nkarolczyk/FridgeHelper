@@ -29,9 +29,9 @@ class ExpiryCheckWorker @AssistedInject constructor(
                     (1000 * 60 * 60 * 24)).toInt()
 
             val message = when {
-                daysLeft <= 0 -> "${product.name} — już przeterminowany!"
-                daysLeft == 1 -> "${product.name} — został 1 dzień!"
-                else          -> "${product.name} — zostało $daysLeft dni"
+                daysLeft <= 0 -> "${product.name} — already expired!"
+                daysLeft == 1 -> "${product.name} — 1 day left!"
+                else          -> "${product.name} — $daysLeft days left"
             }
 
             sendNotification(product.id, message)
@@ -43,7 +43,7 @@ class ExpiryCheckWorker @AssistedInject constructor(
     private fun sendNotification(productId: Int, message: String) {
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Sprawdź lodówkę!")
+            .setContentTitle("Check your fridge!")
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)

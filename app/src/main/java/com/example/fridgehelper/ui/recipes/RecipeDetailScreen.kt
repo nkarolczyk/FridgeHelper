@@ -31,12 +31,12 @@ fun RecipeDetailScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    val title = (uiState as? RecipeDetailUiState.Success)?.recipe?.title ?: "Przepis"
+                    val title = (uiState as? RecipeDetailUiState.Success)?.recipe?.title ?: "Recipe"
                     Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Wróć")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -114,17 +114,17 @@ private fun RecipeDetailContent(recipe: RecipeDetailDto, modifier: Modifier = Mo
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
-                            Text("$servings porcji", style = MaterialTheme.typography.bodyMedium)
+                            Text("$servings servings", style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
 
                 if (steps.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
-                    Text("Przygotowanie", style = MaterialTheme.typography.titleMedium)
+                    Text("Preparation", style = MaterialTheme.typography.titleMedium)
                 } else {
                     Text(
-                        "Brak kroków przygotowania dla tego przepisu.",
+                        "No preparation steps for this recipe.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -175,6 +175,6 @@ private fun DetailErrorView(message: String, onRetry: () -> Unit) {
         modifier = Modifier.padding(24.dp)
     ) {
         Text(message, style = MaterialTheme.typography.bodyMedium)
-        Button(onClick = onRetry) { Text("Spróbuj ponownie") }
+        Button(onClick = onRetry) { Text("Try again") }
     }
 }
