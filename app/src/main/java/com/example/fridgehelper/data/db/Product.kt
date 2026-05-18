@@ -3,6 +3,8 @@ package com.example.fridgehelper.data.db
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+enum class ProductStatus { IN_FRIDGE, USED, WASTED }
+
 // jeden wiersz w tabeli products w bazie room
 @Entity(tableName = "products")
 data class Product(
@@ -16,9 +18,12 @@ data class Product(
     val addedDate: Long = System.currentTimeMillis(),
     val imageUrl: String? = null,
 
-    // wartości odżywcze na 100g — null gdy nieznane (brak skanu lub brak danych w api)
+    // wartości odżywcze na 100g - null gdy nieznane (brak skanu lub brak danych w api)
     val calories: Double? = null,
     val protein: Double? = null,
     val fat: Double? = null,
-    val carbs: Double? = null
+    val carbs: Double? = null,
+
+    val status: ProductStatus = ProductStatus.IN_FRIDGE,
+    val resolvedDate: Long? = null  // timestamp przy USED/WASTED
 )

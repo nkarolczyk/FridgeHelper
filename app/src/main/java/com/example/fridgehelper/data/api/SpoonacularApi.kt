@@ -23,4 +23,12 @@ interface SpoonacularApi {
         @Path("id") id: Int,
         @Query("apiKey") apiKey: String
     ): RecipeDetailDto
+
+    // autocomplete nazw składników używane w skanerze do mapowania nazwy produktu
+    @GET("food/ingredients/autocomplete")
+    suspend fun autocompleteIngredient(
+        @Query("query") query: String,
+        @Query("number") number: Int = 5,
+        @Query("apiKey") apiKey: String
+    ): List<IngredientSuggestionDto>
 }

@@ -8,7 +8,28 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import com.example.fridgehelper.data.db.Product
+import com.example.fridgehelper.ui.theme.Amber100
+import com.example.fridgehelper.ui.theme.Amber900
+import com.example.fridgehelper.ui.theme.CardBorderExpired
+import com.example.fridgehelper.ui.theme.CardBorderWarn
+import com.example.fridgehelper.ui.theme.Coral100
+import com.example.fridgehelper.ui.theme.Coral900
+import com.example.fridgehelper.ui.theme.Green100
+import com.example.fridgehelper.ui.theme.Green500
+import com.example.fridgehelper.ui.theme.GreenBorder
+import com.example.fridgehelper.ui.theme.NavInactive
+import com.example.fridgehelper.ui.theme.StatusOkText
+import com.example.fridgehelper.ui.theme.TextPrimary
+import com.example.fridgehelper.ui.theme.TextSecondary
+import com.example.fridgehelper.ui.theme.TextTertiary
+import com.example.fridgehelper.ui.theme.ViewfinderBg
+import com.example.fridgehelper.ui.theme.fridgeTopBarColors
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -41,6 +62,7 @@ fun ScannerScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    val recentScans by viewModel.recentlyScanned.collectAsState()
 
     var hasCameraPermission by remember {
         mutableStateOf(
@@ -71,7 +93,8 @@ fun ScannerScreen(
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, "Back")
                     }
-                }
+                },
+                colors = fridgeTopBarColors()
             )
         }
     ) { padding ->
@@ -93,6 +116,11 @@ fun ScannerScreen(
                     label = { Text("Enter barcode") },
                     singleLine = true,
                     modifier = Modifier.weight(1f),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Green500,
+                        focusedLabelColor  = Green500,
+                        cursorColor        = Green500
+                    ),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Search
@@ -115,9 +143,15 @@ fun ScannerScreen(
                 }
             }
 
-            Divider()
+            Divider(color = GreenBorder)
 
-            Box(modifier = Modifier.weight(1f)) {
+            // tło podglądu kamery ma ciemnozielony kolor (#0D2418) przed załadowaniem
+            // weight(1f) sprawia, że kamera zajmuje całą pozostałą przestrzeń
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .background(ViewfinderBg)
+            ) {
                 if (!hasCameraPermission) {
                     NoCameraPermissionView(
                         onRequestAgain = { permissionLauncher.launch(Manifest.permission.CAMERA) }
@@ -136,8 +170,26 @@ fun ScannerScreen(
                                 .background(Color.Black.copy(alpha = 0.4f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator(color = Color.White)
+                            CircularProgressIndicator(color = Green500)
                         }
+                    }
+                }
+            }
+            // pasek ostatnio zeskanowanych
+            if (recentScans.isNotEmpty()) {
+                Divider(color = GreenBorder)
+                Text(
+                    "Recently scanned",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextSecondary,
+                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp)
+                )
+                LazyRow(
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(recentScans, key = { it.id }) { product ->
+                        RecentScanChip(product = product)
                     }
                 }
             }
@@ -238,7 +290,7 @@ private fun ScannerOverlay() {
                 CornerDecoration(Modifier.align(Alignment.BottomEnd), bottomRight = true)
             }
             Spacer(Modifier.height(16.dp))
-            Text("Place EAN-13 barcode in the frame", color = Color.White, style = MaterialTheme.typography.bodyMedium)
+            Text("Place EAN-13 barcode in the frame", color = NavInactive, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
@@ -252,10 +304,10 @@ private fun CornerDecoration(
     bottomRight: Boolean = false,
 ) {
     Box(modifier.size(24.dp)) {
-        if (topLeft || bottomLeft) Box(Modifier.width(3.dp).fillMaxHeight().background(Color.White))
-        if (topRight || bottomRight) Box(Modifier.width(3.dp).fillMaxHeight().align(Alignment.TopEnd).background(Color.White))
-        if (topLeft || topRight) Box(Modifier.fillMaxWidth().height(3.dp).background(Color.White))
-        if (bottomLeft || bottomRight) Box(Modifier.fillMaxWidth().height(3.dp).align(Alignment.BottomStart).background(Color.White))
+        if (topLeft || bottomLeft) Box(Modifier.width(3.dp).fillMaxHeight().background(Green500))
+        if (topRight || bottomRight) Box(Modifier.width(3.dp).fillMaxHeight().align(Alignment.TopEnd).background(Green500))
+        if (topLeft || topRight) Box(Modifier.fillMaxWidth().height(3.dp).background(Green500))
+        if (bottomLeft || bottomRight) Box(Modifier.fillMaxWidth().height(3.dp).align(Alignment.BottomStart).background(Green500))
     }
 }
 
@@ -308,6 +360,26 @@ private fun ScannedProductDialog(
                     singleLine = true,
                     isError = name.isBlank()
                 )
+
+                if (state.suggestions.isNotEmpty()) {
+                    Text(
+                        "Spoonacular suggestions:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        state.suggestions.forEach { suggestion ->
+                            SuggestionChip(
+                                onClick = { name = suggestion },
+                                label = { Text(suggestion) }
+                            )
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = days,
                     onValueChange = { days = it.filter(Char::isDigit) },
@@ -329,6 +401,57 @@ private fun ScannedProductDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
+}
+
+@Composable
+private fun RecentScanChip(product: Product) {
+    val daysLeft = ((product.expiryDate - System.currentTimeMillis()) / (1000 * 60 * 60 * 24)).toInt()
+    val chipBg = when {
+        daysLeft < 0  -> Coral100
+        daysLeft <= 2 -> Amber100
+        else          -> Green100
+    }
+    val chipBorder = when {
+        daysLeft < 0  -> CardBorderExpired
+        daysLeft <= 2 -> CardBorderWarn
+        else          -> TextTertiary
+    }
+    val statusColor = when {
+        daysLeft < 0  -> Coral900
+        daysLeft <= 2 -> Amber900
+        else          -> StatusOkText
+    }
+    val statusLabel = when {
+        daysLeft < 0  -> "expired"
+        daysLeft == 0 -> "today"
+        daysLeft == 1 -> "1 day"
+        else          -> "$daysLeft days"
+    }
+
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        color = chipBg,
+        border = androidx.compose.foundation.BorderStroke(1.dp, chipBorder)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+        ) {
+            Text(
+                product.name,
+                style = MaterialTheme.typography.labelMedium,
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 96.dp)
+            )
+            Text(
+                statusLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = statusColor
+            )
+        }
+    }
 }
 
 @Composable

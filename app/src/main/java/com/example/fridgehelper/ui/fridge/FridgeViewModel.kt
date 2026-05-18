@@ -3,6 +3,7 @@ package com.example.fridgehelper.ui.fridge
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fridgehelper.data.db.Product
+import com.example.fridgehelper.data.db.ProductStatus
 import com.example.fridgehelper.data.repository.FridgeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,9 +37,21 @@ class FridgeViewModel @Inject constructor(
         }
     }
 
-    fun removeProduct(product: Product) {
+    fun markAsUsed(product: Product) {
         viewModelScope.launch {
-            repository.removeProduct(product)
+            repository.markProduct(product, ProductStatus.USED)
+        }
+    }
+
+    fun markAsWasted(product: Product) {
+        viewModelScope.launch {
+            repository.markProduct(product, ProductStatus.WASTED)
+        }
+    }
+
+    fun restoreProduct(product: Product) {
+        viewModelScope.launch {
+            repository.updateProduct(product.copy(status = ProductStatus.IN_FRIDGE, resolvedDate = null))
         }
     }
 

@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.example.fridgehelper.data.api.OpenFoodApi
 import com.example.fridgehelper.data.api.SpoonacularApi
 import com.example.fridgehelper.data.db.CachedRecipeDao
+import com.example.fridgehelper.data.db.CachedRecipeDetailDao
 import com.example.fridgehelper.data.db.FridgeDatabase
 import com.example.fridgehelper.data.db.ProductDao
 import com.example.fridgehelper.data.UserPreferences
@@ -33,11 +34,7 @@ object AppModule {
             FridgeDatabase::class.java,
             "fridge_database"
         )
-            .addMigrations(
-                FridgeDatabase.MIGRATION_1_2,
-                FridgeDatabase.MIGRATION_2_3,
-                FridgeDatabase.MIGRATION_3_4
-            )
+            .fallbackToDestructiveMigration()
             .build()
 
     @Provides
@@ -45,6 +42,9 @@ object AppModule {
 
     @Provides
     fun provideCachedRecipeDao(db: FridgeDatabase): CachedRecipeDao = db.cachedRecipeDao()
+
+    @Provides
+    fun provideCachedRecipeDetailDao(db: FridgeDatabase): CachedRecipeDetailDao = db.cachedRecipeDetailDao()
 
     // Open Food Facts
     @Provides

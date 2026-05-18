@@ -1,5 +1,6 @@
 package com.example.fridgehelper.ui.recipes
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +19,12 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.fridgehelper.data.api.RecipeDto
 import com.example.fridgehelper.ui.Screen
+import com.example.fridgehelper.ui.theme.BadgeHaveText
+import com.example.fridgehelper.ui.theme.Coral900
+import com.example.fridgehelper.ui.theme.Green100
+import com.example.fridgehelper.ui.theme.GreenBorder
+import com.example.fridgehelper.ui.theme.NavInactive
+import com.example.fridgehelper.ui.theme.fridgeTopBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,7 +35,22 @@ fun RecipesScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Recipes") }) }
+        topBar = {
+            TopAppBar(
+                title = {
+                    // podtytuł personalizuje ekran
+                    Column {
+                        Text("Recipes", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            "Based on your fridge",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = NavInactive
+                        )
+                    }
+                },
+                colors = fridgeTopBarColors()
+            )
+        }
     ) { padding ->
         Box(
             modifier = Modifier
@@ -37,10 +59,11 @@ fun RecipesScreen(
             contentAlignment = Alignment.Center
         ) {
             when (val state = uiState) {
-                is RecipesUiState.Idle    -> {}
-                is RecipesUiState.Loading -> CircularProgressIndicator()
-                is RecipesUiState.Empty   -> EmptyFridgeView()
-                is RecipesUiState.Error   -> ErrorView(message = state.message) {
+                is RecipesUiState.Idle      -> {}
+                is RecipesUiState.Loading   -> CircularProgressIndicator()
+                is RecipesUiState.Empty     -> EmptyFridgeView()
+                is RecipesUiState.NoResults -> NoResultsView()
+                is RecipesUiState.Error     -> ErrorView(message = state.message) {
                     viewModel.loadRecipes()
                 }
                 is RecipesUiState.Success -> RecipeList(
@@ -86,11 +109,14 @@ private fun RecipeList(
 
 @Composable
 private fun RecipeCard(recipe: RecipeDto, onClick: () -> Unit) {
+    // białe tło + subtelny zielony border — karty "unoszą się" bez cienia
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .border(1.dp, GreenBorder, MaterialTheme.shapes.medium)
             .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -136,10 +162,13 @@ private fun IngredientBadge(count: Int, label: String, color: Color) {
         shape = MaterialTheme.shapes.small,
         color = color
     ) {
+        // kolor tekstu dopasowany do tła zielony dla "have", pom dla "missing"
+        val textColor = if (color == Green100) BadgeHaveText else Coral900
         Text(
             "$count $label",
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            style = MaterialTheme.typography.labelSmall
+            style = MaterialTheme.typography.labelSmall,
+            color = textColor
         )
     }
 }
@@ -155,6 +184,23 @@ private fun EmptyFridgeView() {
             "Add products to see recipes.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun NoResultsView() {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(24.dp)
+    ) {
+        Text("No recipes found", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Spoonacular doesn't have recipes for your current ingredients. Try adding more products.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }
 }

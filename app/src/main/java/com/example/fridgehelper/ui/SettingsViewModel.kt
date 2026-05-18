@@ -9,6 +9,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -27,10 +28,27 @@ class SettingsViewModel @Inject constructor(
             initialValue = UserPreferences.DEFAULT_THRESHOLD
         )
 
+    // para (hour, minute) jako jeden flow
+    val notifyTime: StateFlow<Pair<Int, Int>> = userPreferences.notifyTime
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = UserPreferences.DEFAULT_NOTIFY_HOUR to UserPreferences.DEFAULT_NOTIFY_MINUTE
+        )
+
     fun setThreshold(days: Int) {
         viewModelScope.launch {
             userPreferences.setDaysThreshold(days)
-            FridgeApp.scheduleExpiryCheck(context, days)
+            val (hour, minute) = userPreferences.notifyTime.first()
+            FridgeApp.scheduleExpiryCheck(context, days, hour, minute)
+        }
+    }
+
+    fun setNotifyTime(hour: Int, minute: Int) {
+        viewModelScope.launch {
+            userPreferences.setNotifyTime(hour, minute)
+            // przy zmianie godziny przelicza opóźnienie zachowując obecny próg dni
+            FridgeApp.scheduleExpiryCheck(context, daysThreshold.value, hour, minute)
         }
     }
 }

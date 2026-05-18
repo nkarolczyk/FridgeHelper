@@ -1,5 +1,6 @@
 package com.example.fridgehelper.ui.fridge
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,10 +18,28 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.fridgehelper.ExpiryStatus
+import com.example.fridgehelper.daysLeft
+import com.example.fridgehelper.expiryStatus
 import com.example.fridgehelper.data.db.Product
 import com.example.fridgehelper.ui.Screen
+import com.example.fridgehelper.ui.theme.Amber100
+import com.example.fridgehelper.ui.theme.Amber900
+import com.example.fridgehelper.ui.theme.CardBorderExpired
+import com.example.fridgehelper.ui.theme.CardBorderWarn
+import com.example.fridgehelper.ui.theme.Coral100
+import com.example.fridgehelper.ui.theme.Coral700
+import com.example.fridgehelper.ui.theme.Coral900
+import com.example.fridgehelper.ui.theme.Green100
+import com.example.fridgehelper.ui.theme.Green700
+import com.example.fridgehelper.ui.theme.StatusOkText
+import com.example.fridgehelper.ui.theme.TextPrimary
+import com.example.fridgehelper.ui.theme.TextSecondary
+import com.example.fridgehelper.ui.theme.TextTertiary
+import com.example.fridgehelper.ui.theme.fridgeTopBarColors
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,18 +50,35 @@ fun FridgeScreen(
     val products by viewModel.products.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
     var productToEdit by remember { mutableStateOf<Product?>(null) }
+    var productToRemove by remember { mutableStateOf<Product?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("FRIDGE") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("FRIDGE") },
+                colors = fridgeTopBarColors()
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
+                // mały FAB do skanowania kodu kreskowego
                 SmallFloatingActionButton(
-                    onClick = { navController.navigate(Screen.Scanner.route) }
+                    onClick = { navController.navigate(Screen.Scanner.route) },
+                    containerColor = Green700,
+                    contentColor = Color.White
                 ) {
                     Icon(Icons.Default.CameraAlt, "Scan")
                 }
                 Spacer(Modifier.height(8.dp))
-                FloatingActionButton(onClick = { showAddDialog = true }) {
+                // główny FAB do ręcznego dodania produktu
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    containerColor = Green700,
+                    contentColor = Color.White
+                ) {
                     Icon(Icons.Default.Add, "Add product")
                 }
             }
@@ -72,7 +108,7 @@ fun FridgeScreen(
                 items(products, key = { it.id }) { product ->
                     ProductCard(
                         product = product,
-                        onDelete = { viewModel.removeProduct(product) },
+                        onDelete = { productToRemove = product },
                         onEdit = { productToEdit = product }
                     )
                 }
@@ -100,15 +136,60 @@ fun FridgeScreen(
             onDismiss = { productToEdit = null }
         )
     }
+
+    productToRemove?.let { product ->
+        RemoveProductDialog(
+            productName = product.name,
+            onUsed = {
+                viewModel.markAsUsed(product)
+                productToRemove = null
+                scope.launch {
+                    val result = snackbarHostState.showSnackbar(
+                        message = "Marked as Used",
+                        actionLabel = "Undo",
+                        duration = SnackbarDuration.Short
+                    )
+                    if (result == SnackbarResult.ActionPerformed) viewModel.restoreProduct(product)
+                }
+            },
+            onWasted = {
+                viewModel.markAsWasted(product)
+                productToRemove = null
+                scope.launch {
+                    val result = snackbarHostState.showSnackbar(
+                        message = "Marked as Wasted",
+                        actionLabel = "Undo",
+                        duration = SnackbarDuration.Short
+                    )
+                    if (result == SnackbarResult.ActionPerformed) viewModel.restoreProduct(product)
+                }
+            },
+            onDismiss = { productToRemove = null }
+        )
+    }
 }
 
 @Composable
 fun ProductCard(product: Product, onDelete: () -> Unit, onEdit: () -> Unit) {
-    val daysLeft = ((product.expiryDate - System.currentTimeMillis()) / (1000 * 60 * 60 * 24)).toInt()
-    val cardColor = when {
-        daysLeft < 0  -> MaterialTheme.colorScheme.errorContainer
-        daysLeft <= 2 -> Color(0xFFFFF3CD)
-        else          -> MaterialTheme.colorScheme.surfaceVariant
+    val now = System.currentTimeMillis()
+    val daysLeft = daysLeft(product.expiryDate, now)
+    val status = expiryStatus(product.expiryDate, now)
+
+    // trzy warianty wizualne karty zależne od statusu produktu
+    val cardBg = when (status) {
+        ExpiryStatus.EXPIRED -> Coral100          // przeterminowany — pastelowy koral
+        ExpiryStatus.WARNING -> Amber100          // wygasa — pastelowy bursztyn
+        ExpiryStatus.OK      -> Green100          // ok — pastelowa zieleń
+    }
+    val cardBorder = when (status) {
+        ExpiryStatus.EXPIRED -> CardBorderExpired // koral
+        ExpiryStatus.WARNING -> CardBorderWarn    // bursztyn
+        ExpiryStatus.OK      -> TextTertiary      // zieleń (#B2D9A6)
+    }
+    val statusColor = when (status) {
+        ExpiryStatus.EXPIRED -> Coral900          // tekst "Expired!"
+        ExpiryStatus.WARNING -> Amber900          // tekst "X days left"
+        ExpiryStatus.OK      -> StatusOkText      // tekst "X days left" (zielony)
     }
     val statusText = when {
         daysLeft < 0  -> "Expired!"
@@ -121,24 +202,33 @@ fun ProductCard(product: Product, onDelete: () -> Unit, onEdit: () -> Unit) {
             product.fat != null || product.carbs != null
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = cardColor)
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, cardBorder, MaterialTheme.shapes.medium),
+        colors = CardDefaults.cardColors(containerColor = cardBg),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(product.name, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    product.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimary
+                )
                 Text(
                     statusText,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = statusColor
                 )
                 Text(
                     "Expires: ${SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date(product.expiryDate))}",
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary
                 )
 
                 if (hasNutrition) {
                     Spacer(Modifier.height(6.dp))
+                    // badges wartości odżywczych — kcal czerwony, białko niebieski, tłuszcz bursztyn, węgle zielony
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         product.calories?.let {
                             NutritionBadge(label = "kcal", value = it.toInt().toString(), color = Color(0xFFE57373))
@@ -156,7 +246,7 @@ fun ProductCard(product: Product, onDelete: () -> Unit, onEdit: () -> Unit) {
                     Text(
                         "per 100g",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        color = TextSecondary
                     )
                 }
             }
@@ -307,5 +397,32 @@ fun EditProductDialog(
             }) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
+fun RemoveProductDialog(
+    productName: String,
+    onUsed: () -> Unit,
+    onWasted: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Remove \"$productName\"") },
+        text = { Text("How did it leave the fridge?") },
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onWasted,
+                    colors = ButtonDefaults.buttonColors(containerColor = Coral700)
+                ) { Text("Wasted") }
+                Button(
+                    onClick = onUsed,
+                    colors = ButtonDefaults.buttonColors(containerColor = Green700)
+                ) { Text("Used") }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        }
     )
 }

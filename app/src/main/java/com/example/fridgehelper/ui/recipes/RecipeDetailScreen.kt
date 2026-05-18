@@ -1,7 +1,10 @@
 package com.example.fridgehelper.ui.recipes
 
+import android.os.Build
+import android.text.Html
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -17,7 +20,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.fridgehelper.data.api.ExtendedIngredientDto
 import com.example.fridgehelper.data.api.RecipeDetailDto
+import com.example.fridgehelper.ui.theme.fridgeTopBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,7 +43,8 @@ fun RecipeDetailScreen(
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                colors = fridgeTopBarColors()
             )
         }
     ) { padding ->
@@ -68,6 +74,7 @@ fun RecipeDetailScreen(
 @Composable
 private fun RecipeDetailContent(recipe: RecipeDetailDto, modifier: Modifier = Modifier) {
     val steps = recipe.instructions?.flatMap { it.steps ?: emptyList() } ?: emptyList()
+    val ingredients = recipe.ingredients ?: emptyList()
 
     LazyColumn(modifier = modifier) {
         item {
@@ -81,6 +88,7 @@ private fun RecipeDetailContent(recipe: RecipeDetailDto, modifier: Modifier = Mo
             )
         }
 
+        // tytuł, meta (czas/porcje), opis
         item {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -119,16 +127,62 @@ private fun RecipeDetailContent(recipe: RecipeDetailDto, modifier: Modifier = Mo
                     }
                 }
 
-                if (steps.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    Text("Preparation", style = MaterialTheme.typography.titleMedium)
-                } else {
-                    Text(
-                        "No preparation steps for this recipe.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                // summary z API
+                recipe.summary?.takeIf { it.isNotBlank() }?.let { rawHtml ->
+                    val plainSummary = remember(rawHtml) {
+                        @Suppress("DEPRECATION")
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
+                            Html.fromHtml(rawHtml, Html.FROM_HTML_MODE_COMPACT).toString().trim()
+                        else
+                            Html.fromHtml(rawHtml).toString().trim()
+                    }
+                    if (plainSummary.isNotBlank()) {
+                        Text(
+                            plainSummary,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 5,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
+            }
+        }
+
+        // sekcja składników
+        if (ingredients.isNotEmpty()) {
+            item {
+                Text(
+                    "Ingredients",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+            items(ingredients, key = { "${it.name}_${it.amount}" }) { ingredient ->
+                IngredientRow(ingredient)
+            }
+            item {
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+            }
+        }
+
+        item {
+            if (steps.isNotEmpty()) {
+                Text(
+                    "Preparation",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            } else {
+                Text(
+                    "No preparation steps for this recipe.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(16.dp)
+                )
             }
         }
 
@@ -164,6 +218,37 @@ private fun RecipeDetailContent(recipe: RecipeDetailDto, modifier: Modifier = Mo
         }
 
         item { Spacer(Modifier.height(24.dp)) }
+    }
+}
+
+@Composable
+private fun IngredientRow(ingredient: ExtendedIngredientDto) {
+    val amountStr = if (ingredient.amount % 1 == 0.0)
+        ingredient.amount.toInt().toString()
+    else
+        "%.1f".format(ingredient.amount)
+
+    Row(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            "·",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            buildString {
+                if (ingredient.amount > 0) {
+                    append(amountStr)
+                    if (ingredient.unit.isNotBlank()) append(" ${ingredient.unit}")
+                    append(" ")
+                }
+                append(ingredient.name)
+            },
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }
 

@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -23,9 +24,10 @@ import javax.inject.Inject
 
 // stany ekranu przepisów
 sealed class RecipesUiState {
-    object Idle : RecipesUiState() // przed pierwszym załadowaniem
-    object Loading : RecipesUiState()
-    object Empty : RecipesUiState() //lodówka pusta (nie ma składników)
+    object Idle      : RecipesUiState() // przed pierwszym załadowaniem
+    object Loading   : RecipesUiState()
+    object Empty     : RecipesUiState() // lodówka pusta (nie ma składników)
+    object NoResults : RecipesUiState() // api nie znalazło przepisów dla tych składników no to retry nie pomoze
     data class Success(val recipes: List<RecipeDto>, val fromCache: Boolean = false) : RecipesUiState()
     data class Error(val message: String) : RecipesUiState()
 }
@@ -90,7 +92,7 @@ class RecipesViewModel @Inject constructor(
                 )
 
                 if (recipes.isEmpty()) {
-                    _uiState.value = RecipesUiState.Error("No recipes found for your ingredients.")
+                    _uiState.value = RecipesUiState.NoResults
                     return@launch
                 }
 
@@ -108,9 +110,11 @@ class RecipesViewModel @Inject constructor(
                         fromCache = true
                     )
                 } else {
-                    val msg = when (e) {
-                        is UnknownHostException, is SocketTimeoutException, is IOException ->
+                    val msg = when {
+                        e is UnknownHostException || e is SocketTimeoutException || e is IOException ->
                             "No internet connection. Check your network and try again."
+                        e is HttpException && e.code() == 402 ->
+                            "API limit reached. Try again tomorrow."
                         else -> "Failed to load recipes. Please try again."
                     }
                     _uiState.value = RecipesUiState.Error(msg)

@@ -10,7 +10,10 @@ data class OpenFoodResponse(
 )
 
 data class OpenFoodProduct(
-    @SerializedName("product_name")     // angielska nazwa z api
+    @SerializedName("product_name_en")
+    val productNameEn: String?,
+
+    @SerializedName("product_name")
     val productName: String?,
 
     @SerializedName("product_name_pl")  // polska nazwa z api
@@ -21,7 +24,9 @@ data class OpenFoodProduct(
 
     val nutriments: Nutriments?
 ) {
-    fun bestName(): String? = productName?.takeIf { it.isNotBlank() }
+    // jawna angielska nazwa domyślna
+    fun bestName(): String? = productNameEn?.takeIf { it.isNotBlank() }
+        ?: productName?.takeIf { it.isNotBlank() }
         ?: productNamePl?.takeIf { it.isNotBlank() }
 }
 

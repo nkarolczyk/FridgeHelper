@@ -18,7 +18,7 @@ data class RecipeDto(
     val missedIngredients: Int
 )
 
-// pełne dane przepisu NA RAZIE NIE UZYWANE
+// pełne dane przepisu — używane przez RecipeDetailScreen
 data class RecipeDetailDto(
     val id: Int,
     val title: String,
@@ -31,7 +31,10 @@ data class RecipeDetailDto(
     val summary: String?,
 
     @SerializedName("analyzedInstructions")
-    val instructions: List<InstructionDto>?
+    val instructions: List<InstructionDto>?,
+
+    @SerializedName("extendedIngredients")
+    val ingredients: List<ExtendedIngredientDto>?
 )
 
 // lista kroków dla jednej sekcji przepisu
@@ -42,4 +45,17 @@ data class InstructionDto(
 data class StepDto(
     val number: Int,
     val step: String
+)
+
+// pojedynczy składnik przepisu ze szczegółami
+data class ExtendedIngredientDto(
+    val name: String,
+    val amount: Double,
+    val unit: String
+)
+
+// sugestia składnika zwracana przez Spoonacular
+data class IngredientSuggestionDto(
+    val id: Int,
+    val name: String
 )
